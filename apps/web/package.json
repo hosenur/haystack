@@ -1,43 +1,28 @@
 {
-  "name": "totp-starter-example",
-  "author": "Daniel Kanem <devxo@mail.com> (https://twitter.com/DanielKanem)",
+  "name": "web",
+  "version": "1.0.0",
   "private": true,
-  "sideEffects": false,
-  "type": "module",
   "scripts": {
-    "build": "remix build",
-    "dev": "remix dev --manual",
-    "start": "remix-serve ./build/index.js",
-    "typecheck": "tsc"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint . --max-warnings 0"
   },
   "dependencies": {
-    "@prisma/client": "5.3.1",
-    "@remix-run/css-bundle": "^2.7.2",
-    "@remix-run/node": "^2.7.2",
-    "@remix-run/react": "^2.7.2",
-    "@remix-run/router": "^1.15.1",
-    "@remix-run/serve": "^2.7.2",
-    "isbot": "^3.8.0",
+    "@repo/ui": "workspace:*",
+    "next": "^14.1.1",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "remix-auth": "^3.6.0",
-    "remix-auth-totp": "^3.2.0",
-    "zod": "^3.22.4"
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
-    "@remix-run/dev": "^2.7.2",
-    "@remix-run/eslint-config": "^2.7.2",
-    "@types/react": "^18.2.58",
+    "@next/eslint-plugin-next": "^14.1.1",
+    "@repo/eslint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
+    "@types/eslint": "^8.56.5",
+    "@types/node": "^20.11.24",
+    "@types/react": "^18.2.61",
     "@types/react-dom": "^18.2.19",
-    "autoprefixer": "^10.4.17",
     "eslint": "^8.57.0",
-    "prettier": "^3.2.5",
-    "prettier-plugin-tailwindcss": "^0.5.11",
-    "prisma": "^5.10.2",
-    "tailwindcss": "^3.4.1",
     "typescript": "^5.3.3"
-  },
-  "engines": {
-    "node": ">=18.0.0"
   }
 }
