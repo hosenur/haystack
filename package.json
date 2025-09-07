@@ -6,7 +6,8 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "postinstall": "bun prisma generate"
   },
   "dependencies": {
     "@intentui/icons": "^1.11.0",
