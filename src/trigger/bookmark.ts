@@ -25,7 +25,6 @@ export const bookmark = task({
         },
       ],
     });
-    console.log(doc.json);
     const result = schema.parse(doc.json);
     await namespace.upsertRecords([
       {
