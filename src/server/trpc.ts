@@ -1,22 +1,31 @@
 import { prisma } from "@/lib/prisma";
+import { parseCookies, getServerSession, createAuthCookies } from "@/lib/auth-utils";
 import { initTRPC, TRPCError } from "@trpc/server";
 import { CreateNextContextOptions } from "@trpc/server/adapters/next";
 import superjson from "superjson";
 import { z } from "zod";
-import { auth } from "../lib/auth";
 
 // Create context for tRPC
 export const createTRPCContext = async (opts: CreateNextContextOptions) => {
   const { req, res } = opts;
-  const session = await auth.api.getSession({ 
-    headers: new Headers(req.headers as Record<string, string>)
-  });
+  
+  // Parse cookies from request
+  const cookies = parseCookies(req.headers.cookie);
+  const session = await getServerSession(cookies);
+
+  // If tokens were refreshed, update cookies
+  if (session?.tokens) {
+    res.setHeader("Set-Cookie", createAuthCookies(
+      session.tokens.access,
+      session.tokens.refresh
+    ));
+  }
+
   return {
     req,
     res,
     prisma,
-    session,
-    auth,
+    user: session?.user || null,
   };
 };
 
@@ -41,16 +50,15 @@ const t = initTRPC.context<Context>().create({
 export const createTRPCRouter = t.router;
 export const publicProcedure = t.procedure;
 
-// You can create protected procedures here later
+// Protected procedures
 export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
-  if (!ctx.session?.user) {
+  if (!ctx.user) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
   return next({
     ctx: {
       ...ctx,
-      session: { ...ctx.session, user: ctx.session.user },
+      user: ctx.user,
     },
   });
 });
-

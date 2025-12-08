@@ -9,7 +9,7 @@ export const bookmarkRouter = createTRPCRouter({
     .input(
       z.object({
         url: z.url(),
-      }),
+      })
     )
     .mutation(async ({ input }) => {
       const handle = await tasks.trigger<typeof bookmark>("bookmark", {
@@ -22,7 +22,7 @@ export const bookmarkRouter = createTRPCRouter({
     .input(
       z.object({
         query: z.string().min(2).max(100),
-      }),
+      })
     )
     .query(async ({ input }) => {
       const namespace = pc

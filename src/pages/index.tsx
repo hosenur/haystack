@@ -1,18 +1,22 @@
-import * as React from "react";
+import { ThemeSwitcher } from "@/components/theme-switcher";
+import { Button } from "@/components/ui/button";
+import { TextField } from "@/components/ui/text-field";
+import AppLayout from "@/layouts/app-layout";
+import { trpc } from "@/lib/trpc";
+import { cn } from "@/lib/utils";
+import { withAuth, WithAuthProps } from "@/lib/with-auth";
 import {
   RiExternalLinkLine,
   RiLink,
   RiLoader2Fill,
-  RiSearch2Line
+  RiLogoutBoxLine,
+  RiSearch2Line,
 } from "@remixicon/react";
-import { trpc } from "@/lib/trpc";
-import AppLayout from "@/layouts/app-layout";
-import { toast } from "sonner";
-import { TextField } from "@/components/ui/text-field";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { ThemeSwitcher } from "@/components/theme-switcher";
 import Link from "next/link";
+import { useRouter } from "next/router";
+import * as React from "react";
+import { toast } from "sonner";
+
 interface BookmarkFields {
   url: string;
   title: string;
@@ -23,10 +27,12 @@ interface SearchHit {
   _score: number;
   fields: BookmarkFields;
 }
-const HomePage: React.FC = () => {
+
+const HomePage: React.FC<WithAuthProps> = () => {
   const [url, setURL] = React.useState<string>("");
   const [query, setQuery] = React.useState<string>("");
   const [searchTrigger, setSearchTrigger] = React.useState<string>(""); // Add search trigger state
+  const router = useRouter();
 
   const bookmark = trpc.bookmark.insert.useMutation({
     onSuccess: () => {
@@ -43,7 +49,7 @@ const HomePage: React.FC = () => {
     { query: searchTrigger }, // Use searchTrigger instead of query.trim()
     {
       enabled: Boolean(searchTrigger.trim()), // Enable when searchTrigger has value
-    },
+    }
   );
 
   const handleSearchBookMark = () => {
@@ -66,13 +72,23 @@ const HomePage: React.FC = () => {
     // Basic URL validation
     try {
       new URL(
-        trimmedUrl.startsWith("http") ? trimmedUrl : `https://${trimmedUrl}`,
+        trimmedUrl.startsWith("http") ? trimmedUrl : `https://${trimmedUrl}`
       );
     } catch {
       toast.error("Please enter a valid URL");
       return;
     }
     bookmark.mutate({ url: trimmedUrl });
+  };
+
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      toast.success("Logged out successfully");
+      router.push("/auth/login");
+    } catch {
+      toast.error("Failed to logout");
+    }
   };
 
   // Handle keyboard events
@@ -88,20 +104,28 @@ const HomePage: React.FC = () => {
     }
   };
 
+
   return (
     <AppLayout>
       <div
         className={cn(
-          "h-[95vh] my-auto grid grid-cols-12  border m-5 border-dashed",
+          "h-[95vh] my-auto grid grid-cols-12  border m-5 border-dashed"
         )}
       >
         <div className="col-span-12 md:col-span-4 flex flex-col border-r border-dashed divide-y divide-dashed">
-          <div className="h-10 items-center flex p-2">
+          <div className="h-10 items-center flex p-2 justify-between">
             <ThemeSwitcher />
+            <button
+              onClick={handleLogout}
+              className="text-xs flex items-center gap-1 px-2 py-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded"
+            >
+              <RiLogoutBoxLine size={16} />
+              Logout
+            </button>
           </div>
 
           {/* Create Bookmark Section */}
-          <div className="p-4  grid gap-4 w-full">
+          <div className="p-4  grid gap-4 w-full h-48">
             <div className="flex items-center gap-2 text-sm">
               <RiLink size={18} className="text-neutral-500" />
               <p className="font-medium">Create Bookmark</p>
@@ -167,28 +191,30 @@ const HomePage: React.FC = () => {
             )}
           </div>
           <div className="flex divide-y flex-col divide-dashed">
-            {(search?.data?.hits as SearchHit[])
-              ?.filter((hit) => hit._score != 0)
-              .map((hit) => (
-                <div key={hit._id} className="p-4 group flex justify-between">
-                  <Link
-                    target="_blank"
-                    href={hit.fields.url}
-                    className="font-medium text-sm text-muted-fg hover:text-primary ease-in-out duration-200"
-                  >
-                    {hit.fields.title}
-                  </Link>
-                  <RiExternalLinkLine
-                    size={15}
-                    className=" hidden group-hover:block"
-                  />
-                </div>
-              ))}
+            {(search?.data?.hits as SearchHit[])?.map((hit) => (
+              <div key={hit._id} className="p-4 group flex items-center justify-between h-16">
+                <Link
+                  target="_blank"
+                  href={hit.fields.url}
+                  className="font-medium text-sm text-muted-fg hover:text-primary ease-in-out duration-200"
+                >
+                  {hit.fields.title}
+                </Link>
+
+
+                <RiExternalLinkLine
+                  size={15}
+                  className=" hidden group-hover:block"
+                />
+              </div>
+            ))}
           </div>
         </div>
       </div>
     </AppLayout>
   );
 };
+
+export const getServerSideProps = withAuth();
 
 export default HomePage;

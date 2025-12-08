@@ -1,4 +1,6 @@
-import { createAuthClient } from "better-auth/react";
-export const authClient = createAuthClient({
-  baseURL: "http://localhost:3000",
+import { createClient } from "@openauthjs/openauth/client";
+
+export const authClient = createClient({
+  clientID: "haystack-web",
+  issuer: "https://auth.hosenur.cloud",
 });
