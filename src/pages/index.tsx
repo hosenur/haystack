@@ -16,6 +16,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import * as React from "react";
 import { toast } from "sonner";
+import { useChat, fetchServerSentEvents } from "@tanstack/ai-react";
 
 interface BookmarkFields {
   url: string;
@@ -33,6 +34,18 @@ const HomePage: React.FC<WithAuthProps> = () => {
   const [query, setQuery] = React.useState<string>("");
   const [searchTrigger, setSearchTrigger] = React.useState<string>(""); // Add search trigger state
   const router = useRouter();
+
+  const { messages, sendMessage, isLoading } = useChat({
+    connection: fetchServerSentEvents("/api/chat"),
+  });
+  const [chatInput, setChatInput] = React.useState("");
+
+  const handleChatSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim() || isLoading) return;
+    sendMessage(chatInput);
+    setChatInput("");
+  };
 
   const bookmark = trpc.bookmark.insert.useMutation({
     onSuccess: () => {
@@ -178,6 +191,57 @@ const HomePage: React.FC<WithAuthProps> = () => {
                 "Search Bookmarks"
               )}
             </Button>
+          </div>
+          <div>
+            <div className="flex flex-col h-[500px] border-t border-dashed">
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {messages.length === 0 && (
+                  <div className="text-center text-muted-fg text-sm mt-10">
+                    Ask me anything about your bookmarks...
+                  </div>
+                )}
+                {messages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={`flex flex-col ${message.role === "assistant" ? "items-start" : "items-end"
+                      }`}
+                  >
+                    <div
+                      className={`px-4 py-2 rounded-lg max-w-[80%] text-sm ${message.role === "assistant"
+                          ? "bg-neutral-100 dark:bg-neutral-800"
+                          : "bg-blue-600 text-white"
+                        }`}
+                    >
+                      {message.role === "assistant" && (
+                        <p className="text-xs font-semibold mb-1 opacity-50">AI</p>
+                      )}
+                      {message.parts.map((part, idx) => {
+                        if (part.type === "text") {
+                          return <div key={idx} className="whitespace-pre-wrap">{part.content}</div>;
+                        }
+                        return null;
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <form
+                onSubmit={handleChatSubmit}
+                className="p-4 border-t border-dashed flex gap-2 items-end"
+              >
+                <div className="flex-1">
+                  <TextField
+                    value={chatInput}
+                    onChange={(v) => setChatInput(v)}
+                    placeholder="Ask a question..."
+                    isDisabled={isLoading}
+                  />
+                </div>
+                <Button type="submit" isDisabled={isLoading || !chatInput.trim()}>
+                  {isLoading ? "..." : "Send"}
+                </Button>
+              </form>
+            </div>
           </div>
         </div>
 

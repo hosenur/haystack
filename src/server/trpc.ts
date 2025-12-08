@@ -1,4 +1,3 @@
-import { prisma } from "@/lib/prisma";
 import { parseCookies, getServerSession, createAuthCookies } from "@/lib/auth-utils";
 import { initTRPC, TRPCError } from "@trpc/server";
 import { CreateNextContextOptions } from "@trpc/server/adapters/next";
@@ -24,7 +23,6 @@ export const createTRPCContext = async (opts: CreateNextContextOptions) => {
   return {
     req,
     res,
-    prisma,
     user: session?.user || null,
   };
 };
