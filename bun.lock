@@ -56,9 +56,6 @@
       },
     },
   },
-  "patchedDependencies": {
-    "@mendable/firecrawl-js@4.8.3": "patches/@mendable%2Ffirecrawl-js@4.8.3.patch",
-  },
   "packages": {
     "@alcyone-labs/zod-to-json-schema": ["@alcyone-labs/zod-to-json-schema@4.0.10", "", { "peerDependencies": { "zod": "^4.0.5" } }, "sha512-TFsSpAPToqmqmT85SGHXuxoCwEeK9zUDvn512O9aBVvWRhSuy+VvAXZkifzsdllD3ncF0ZjUrf4MpBwIEixdWQ=="],
 
