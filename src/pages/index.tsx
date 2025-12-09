@@ -2,7 +2,8 @@ import { ThemeSwitcher } from "@/components/theme-switcher";
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
 import AppLayout from "@/layouts/app-layout";
-import { trpc } from "@/lib/trpc";
+import { useMutation, useQuery } from "@tanstack/react-query";
+
 import { cn } from "@/lib/utils";
 import { withAuth, WithAuthProps } from "@/lib/with-auth";
 import type { BundledTheme } from 'shiki';
@@ -43,6 +44,28 @@ interface SearchHit {
   fields: BookmarkFields;
 }
 
+const createBookmark = async (data: { url: string }) => {
+  const res = await fetch("/api/bookmark/create", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || "Failed to create bookmark");
+  }
+  return res.json();
+};
+
+const searchBookmarks = async (query: string) => {
+  const res = await fetch(`/api/bookmark/search?query=${encodeURIComponent(query)}`);
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || "Failed to search bookmarks");
+  }
+  return res.json();
+};
+
 const HomePage: React.FC<WithAuthProps> = () => {
   const [url, setURL] = React.useState<string>("");
   const [query, setQuery] = React.useState<string>("");
@@ -70,7 +93,8 @@ const HomePage: React.FC<WithAuthProps> = () => {
     setChatInput("");
   };
 
-  const bookmark = trpc.bookmark.insert.useMutation({
+  const bookmark = useMutation({
+    mutationFn: createBookmark,
     onSuccess: () => {
       toast.success("Bookmark created successfully!");
       setURL(""); // Clear the input after successful creation
@@ -81,9 +105,10 @@ const HomePage: React.FC<WithAuthProps> = () => {
   });
 
   // Fix: Use searchTrigger instead of query for enabled condition
-  const search = trpc.bookmark.search.useQuery(
-    { query: searchTrigger }, // Use searchTrigger instead of query.trim()
+  const search = useQuery(
     {
+      queryKey: ["search", searchTrigger],
+      queryFn: () => searchBookmarks(searchTrigger),
       enabled: Boolean(searchTrigger.trim()), // Enable when searchTrigger has value
     }
   );

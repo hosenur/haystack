@@ -20,5 +20,5 @@ export default async function handler(
   console.log(JSON.stringify(debugInfo, null, 2));
   console.log("======================");
 
-  return res.status(200).json(debugInfo);
+  res.status(200).json(debugInfo);
 }
