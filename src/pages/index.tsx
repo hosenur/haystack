@@ -5,6 +5,7 @@ import AppLayout from "@/layouts/app-layout";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { withAuth, WithAuthProps } from "@/lib/with-auth";
+import type { BundledTheme } from 'shiki';
 import {
   RiExternalLinkLine,
   RiLink,
@@ -17,6 +18,18 @@ import { useRouter } from "next/router";
 import * as React from "react";
 import { toast } from "sonner";
 import { useChat, fetchServerSentEvents } from "@tanstack/ai-react";
+import { Streamdown as Markdown } from "streamdown";
+import { Mirage } from "ldrs/react";
+import "ldrs/react/Mirage.css";
+import IconStar from "@/components/star";
+import IconTool from "@/components/tool";
+const themes = ['github-light', 'github-dark'] as [BundledTheme, BundledTheme];
+
+const TOOL_DISPLAY_NAMES: Record<string, string> = {
+  searchBookmarks: "Search Bookmarks",
+  webSearch: "Web Search",
+  createBookmark: "Create Bookmark",
+};
 
 interface BookmarkFields {
   url: string;
@@ -39,6 +52,15 @@ const HomePage: React.FC<WithAuthProps> = () => {
     connection: fetchServerSentEvents("/api/chat"),
   });
   const [chatInput, setChatInput] = React.useState("");
+  const messagesEndRef = React.useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  React.useEffect(() => {
+    scrollToBottom();
+  }, [messages, isLoading]);
 
   const handleChatSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,7 +144,7 @@ const HomePage: React.FC<WithAuthProps> = () => {
     <AppLayout>
       <div
         className={cn(
-          "h-[95vh] my-auto grid grid-cols-12  border m-5 border-dashed"
+          "fixed inset-4 md:inset-6 grid grid-cols-12 border border-dashed overflow-hidden bg-background rounded-xl"
         )}
       >
         <div className="col-span-12 md:col-span-4 flex flex-col border-r border-dashed divide-y divide-dashed">
@@ -138,7 +160,7 @@ const HomePage: React.FC<WithAuthProps> = () => {
           </div>
 
           {/* Create Bookmark Section */}
-          <div className="p-4  grid gap-4 w-full h-48">
+          <div className="p-4  grid gap-4 w-full">
             <div className="flex items-center gap-2 text-sm">
               <RiLink size={18} className="text-neutral-500" />
               <p className="font-medium">Create Bookmark</p>
@@ -154,14 +176,7 @@ const HomePage: React.FC<WithAuthProps> = () => {
               onClick={handleCreateBookmark}
               isDisabled={!url.trim() || bookmark.isPending}
             >
-              {bookmark.isPending ? (
-                <>
-                  <RiLoader2Fill className="animate-spin mr-2" size={16} />
-                  Creating...
-                </>
-              ) : (
-                "Create Bookmark"
-              )}
+              Create Bookmark
             </Button>
           </div>
 
@@ -182,96 +197,159 @@ const HomePage: React.FC<WithAuthProps> = () => {
               onClick={handleSearchBookMark}
               isDisabled={search.isLoading || !query.trim()}
             >
-              {search.isLoading ? (
-                <>
-                  <RiLoader2Fill className="animate-spin mr-2" size={16} />
-                  Searching...
-                </>
-              ) : (
-                "Search Bookmarks"
-              )}
+              Search Bookmarks
             </Button>
           </div>
-          <div>
-            <div className="flex flex-col h-[500px] border-t border-dashed">
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {messages.length === 0 && (
-                  <div className="text-center text-muted-fg text-sm mt-10">
-                    Ask me anything about your bookmarks...
+          <div className="flex-1 flex flex-col min-h-0">
+            <div className="flex items-center h-10 p-2 px-4 border-b border-dashed flex-shrink-0">
+              {query ? (
+                <p className="text-sm text-neutral-500 truncate">
+                  Results for &quot;{query}&quot;
+                </p>
+              ) : (
+                <p className="text-sm text-neutral-500">
+                  Search Results
+                </p>
+              )}
+            </div>
+            <div className="flex-1 overflow-y-auto divide-y divide-dashed">
+              {(search?.data?.hits as SearchHit[])?.map((hit) => (
+                <div key={hit._id} className="p-4 group flex items-center justify-between shrink-0">
+                  <Link
+                    target="_blank"
+                    href={hit.fields.url}
+                    className="font-medium text-sm text-muted-fg hover:text-primary ease-in-out duration-200 line-clamp-1 break-all"
+                  >
+                    {hit.fields.title}
+                  </Link>
+                  <RiExternalLinkLine
+                    size={15}
+                    className="hidden group-hover:block flex-shrink-0 ml-2"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Results Section */}
+        <div className="col-span-12 md:col-span-8 flex flex-col min-h-0 divide-y divide-dashed">
+          <div className="flex flex-col h-full overflow-hidden">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
+              {messages.length === 0 && (
+                <div className="flex flex-col items-center justify-center h-full text-muted-fg space-y-2">
+                  <div className="p-3 bg-neutral-100 dark:bg-neutral-800 rounded-full">
+                    <RiSearch2Line size={24} />
                   </div>
-                )}
-                {messages.map((message) => (
+                  <p className="text-sm">Ask me anything about your bookmarks...</p>
+                </div>
+              )}
+              {messages.map((message) => {
+                const isThinking =
+                  message.role === "assistant" &&
+                  isLoading &&
+                  messages[messages.length - 1]?.id === message.id &&
+                  (!message.parts.length ||
+                    (message.parts.length === 1 &&
+                      message.parts[0].type === "text" &&
+                      !message.parts[0].content));
+
+                return (
                   <div
                     key={message.id}
-                    className={`flex flex-col ${message.role === "assistant" ? "items-start" : "items-end"
-                      }`}
+                    className={`flex ${message.role === "assistant" ? "justify-start" : "justify-end"
+                      } ${isThinking ? "items-center" : "items-start"} mb-4`}
                   >
+                    {message.role === "assistant" && (
+                      <div className={`flex-shrink-0 mr-2 ${isThinking ? "" : "mt-1"}`}>
+                        <div className="w-8 h-8 rounded-full bg-indigo-500/10 flex items-center justify-center">
+                          <IconStar size="16px" />
+                        </div>
+                      </div>
+                    )}
                     <div
-                      className={`px-4 py-2 rounded-lg max-w-[80%] text-sm ${message.role === "assistant"
-                          ? "bg-neutral-100 dark:bg-neutral-800"
-                          : "bg-blue-600 text-white"
+                      className={`px-4 py-3 rounded-2xl   corner-squircle max-w-[85%] text-sm ${message.role === "assistant"
+                        ? isThinking
+                          ? ""
+                          : "bg-muted"
+                        : "bg-primary text-primary-fg"
                         }`}
                     >
-                      {message.role === "assistant" && (
-                        <p className="text-xs font-semibold mb-1 opacity-50">AI</p>
+                      {isThinking && (
+                        <div className="py-2 text-primary">
+                          <Mirage size="30" speed="2.5" color="currentColor" />
+                        </div>
                       )}
                       {message.parts.map((part, idx) => {
                         if (part.type === "text") {
-                          return <div key={idx} className="whitespace-pre-wrap">{part.content}</div>;
+                          return (
+                            <div key={idx} className="prose dark:prose-invert prose-sm max-w-none">
+                              <Markdown shikiTheme={themes}>{part.content}</Markdown>
+                            </div>
+                          );
+                        }
+                        if (part.type === "tool-call") {
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                          const toolPart = part as any;
+                          const toolCallId = toolPart.toolCallId || toolPart.id;
+                          const toolName = toolPart.toolName || toolPart.name;
+                          const toolArgs = toolPart.args;
+
+                          return (
+                            <div key={toolCallId} className="flex items-center gap-2 text-xs text-muted-fg my-2">
+                              <IconTool size="16" />
+                              <span className="font-medium">{TOOL_DISPLAY_NAMES[toolName] || toolName}</span>
+                              <span className="opacity-50 text-[10px] font-mono truncate max-w-[200px]">
+                                {JSON.stringify(toolArgs)}
+                              </span>
+                            </div>
+                          );
                         }
                         return null;
                       })}
                     </div>
                   </div>
-                ))}
-              </div>
-              <form
-                onSubmit={handleChatSubmit}
-                className="p-4 border-t border-dashed flex gap-2 items-end"
-              >
+                );
+              })}
+              {isLoading && messages[messages.length - 1]?.role !== "assistant" && (
+                <div className="flex flex-col items-start">
+                  <div className="px-4 py-3 rounded-2xl max-w-[85%] text-sm shadow-sm bg-white dark:bg-neutral-800 border">
+                    <div className="flex items-center gap-2 mb-2 opacity-60">
+                      <div className="w-5 h-5 rounded-full bg-indigo-500/10 flex items-center justify-center">
+                        <RiSearch2Line size={10} />
+                      </div>
+                      <span className="text-xs font-medium">AI Assistant</span>
+                    </div>
+                    <div className="py-2 text-foreground">
+                      <Mirage size="60" speed="2.5" color="currentColor" />
+                    </div>
+
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+            <form
+              onSubmit={handleChatSubmit}
+              className="shrink-0 p-4 border-t border-dashed bg-background/50 backdrop-blur supports-[backdrop-filter]:bg-background/50"
+            >
+              <div className="relative flex gap-2 items-end max-w-3xl mx-auto w-full">
                 <div className="flex-1">
                   <TextField
                     value={chatInput}
                     onChange={(v) => setChatInput(v)}
                     placeholder="Ask a question..."
                     isDisabled={isLoading}
+                    className="w-full shadow-sm"
                   />
                 </div>
-                <Button type="submit" isDisabled={isLoading || !chatInput.trim()}>
-                  {isLoading ? "..." : "Send"}
+                <Button type="submit" isDisabled={isLoading || !chatInput.trim()} className="shadow-sm">
+                  {isLoading ? (
+                    <RiLoader2Fill className="animate-spin" size={18} />
+                  ) : "Send"}
                 </Button>
-              </form>
-            </div>
-          </div>
-        </div>
-
-        {/* Results Section */}
-        <div className="col-span-12 md:col-span-8 flex flex-col  divide-y divide-dashed">
-          <div className="flex items-center h-10 p-4">
-            {query && (
-              <p className="text-sm text-neutral-500">
-                Showing results for {query}
-              </p>
-            )}
-          </div>
-          <div className="flex divide-y flex-col divide-dashed">
-            {(search?.data?.hits as SearchHit[])?.map((hit) => (
-              <div key={hit._id} className="p-4 group flex items-center justify-between h-16">
-                <Link
-                  target="_blank"
-                  href={hit.fields.url}
-                  className="font-medium text-sm text-muted-fg hover:text-primary ease-in-out duration-200"
-                >
-                  {hit.fields.title}
-                </Link>
-
-
-                <RiExternalLinkLine
-                  size={15}
-                  className=" hidden group-hover:block"
-                />
               </div>
-            ))}
+            </form>
           </div>
         </div>
       </div>

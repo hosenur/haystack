@@ -21,13 +21,19 @@
       "@/*": [
         "./src/*"
       ]
-    }
+    },
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
   },
   "include": [
-    "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
-    "trigger.config.ts"
+    "next-env.d.ts",
+    "trigger.config.ts",
+    ".next/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"
