@@ -15,6 +15,7 @@ import {
 } from "@remixicon/react";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { ReactLenis } from "lenis/react";
 import * as React from "react";
 import { toast } from "sonner";
 import { useChat, fetchServerSentEvents } from "@tanstack/ai-react";
@@ -235,7 +236,7 @@ const HomePage: React.FC<WithAuthProps> = () => {
         {/* Results Section */}
         <div className="col-span-12 md:col-span-8 flex flex-col min-h-0 divide-y divide-dashed">
           <div className="flex flex-col h-full overflow-hidden">
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
+            <ReactLenis root={false} className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
               {messages.length === 0 && (
                 <div className="flex flex-col items-center justify-center h-full text-muted-fg space-y-2">
                   <div className="p-3 bg-neutral-100 dark:bg-neutral-800 rounded-full">
@@ -328,7 +329,7 @@ const HomePage: React.FC<WithAuthProps> = () => {
                 </div>
               )}
               <div ref={messagesEndRef} />
-            </div>
+            </ReactLenis>
             <form
               onSubmit={handleChatSubmit}
               className="shrink-0 p-4 border-t border-dashed bg-background/50 backdrop-blur supports-[backdrop-filter]:bg-background/50"
@@ -353,7 +354,7 @@ const HomePage: React.FC<WithAuthProps> = () => {
           </div>
         </div>
       </div>
-    </AppLayout>
+    </AppLayout >
   );
 };
 
