@@ -6,7 +6,7 @@ import { GetServerSideProps } from "next";
 export const getServerSideProps: GetServerSideProps = async (context) => {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const redirectUri = `${baseUrl}/api/auth/callback`;
-  
+
   // Use the OpenAuth client to get the authorization URL
   const { url } = await authClient.authorize(redirectUri, "code", {
     provider: "code", // OTP provider
