@@ -227,7 +227,7 @@ const HomePage: React.FC<WithAuthProps> = () => {
             </Button>
           </div>
           <div className="flex-1 flex flex-col min-h-0">
-            <div className="flex items-center h-10 p-2 px-4 border-b border-dashed flex-shrink-0">
+            <div className="flex items-center h-10 p-2 px-4 border-b border-dashed shrink-0">
               {query ? (
                 <p className="text-sm text-neutral-500 truncate">
                   Results for &quot;{query}&quot;
@@ -250,7 +250,7 @@ const HomePage: React.FC<WithAuthProps> = () => {
                   </Link>
                   <RiExternalLinkLine
                     size={15}
-                    className="hidden group-hover:block flex-shrink-0 ml-2"
+                    className="hidden group-hover:block shrink-0 ml-2"
                   />
                 </div>
               ))}
@@ -288,7 +288,7 @@ const HomePage: React.FC<WithAuthProps> = () => {
                       } ${isThinking ? "items-center" : "items-start"} mb-4`}
                   >
                     {message.role === "assistant" && (
-                      <div className={`flex-shrink-0 mr-2 ${isThinking ? "" : "mt-1"}`}>
+                      <div className={`shrink-0 mr-2 ${isThinking ? "" : "mt-1"}`}>
                         <div className="w-8 h-8 rounded-full bg-indigo-500/10 flex items-center justify-center">
                           <IconStar size="16px" />
                         </div>
@@ -358,7 +358,7 @@ const HomePage: React.FC<WithAuthProps> = () => {
             </ReactLenis>
             <form
               onSubmit={handleChatSubmit}
-              className="shrink-0 p-4 border-t border-dashed bg-background/50 backdrop-blur supports-[backdrop-filter]:bg-background/50"
+              className="shrink-0 p-4 border-t border-dashed bg-background/50 backdrop-blur supports-backdrop-filter:bg-background/50"
             >
               <div className="relative flex gap-2 items-end max-w-3xl mx-auto w-full">
                 <div className="flex-1">
