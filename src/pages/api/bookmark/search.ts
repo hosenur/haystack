@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { pc } from "@/lib/pinecone";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { getServerSession, parseCookies, createAuthCookies } from "@/lib/auth-utils";
+import { getServerSession } from "@/lib/auth-utils";
 
 const schema = z.object({
     query: z.string().min(2).max(100),
@@ -16,19 +16,10 @@ export default async function handler(
     }
 
     // Auth check
-    const cookies = parseCookies(req.headers.cookie);
-    const session = await getServerSession(cookies);
+    const session = await getServerSession();
 
     if (!session?.user) {
         return res.status(401).json({ error: "Unauthorized" });
-    }
-
-    // Update cookies if refreshed
-    if (session.tokens) {
-        res.setHeader("Set-Cookie", createAuthCookies(
-            session.tokens.access,
-            session.tokens.refresh
-        ));
     }
 
     try {

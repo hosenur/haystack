@@ -1,6 +1,7 @@
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
+import { Input } from "@/components/ui/input";
 import AppLayout from "@/layouts/app-layout";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
@@ -19,7 +20,8 @@ import { useRouter } from "next/router";
 import { ReactLenis } from "lenis/react";
 import * as React from "react";
 import { toast } from "sonner";
-import { useChat, fetchServerSentEvents } from "@tanstack/ai-react";
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
 import { Streamdown as Markdown } from "streamdown";
 import { Mirage } from "ldrs/react";
 import "ldrs/react/Mirage.css";
@@ -72,10 +74,11 @@ const HomePage: React.FC<WithAuthProps> = () => {
   const [searchTrigger, setSearchTrigger] = React.useState<string>(""); // Add search trigger state
   const router = useRouter();
 
-  const { messages, sendMessage, isLoading } = useChat({
-    connection: fetchServerSentEvents("/api/chat"),
+  const { messages, sendMessage, status } = useChat({
+    transport: new DefaultChatTransport({ api: "/api/chat" }),
   });
   const [chatInput, setChatInput] = React.useState("");
+  const isLoading = status === "streaming" || status === "submitted";
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -89,7 +92,7 @@ const HomePage: React.FC<WithAuthProps> = () => {
   const handleChatSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!chatInput.trim() || isLoading) return;
-    sendMessage(chatInput);
+    sendMessage({ text: chatInput });
     setChatInput("");
   };
 
@@ -193,11 +196,12 @@ const HomePage: React.FC<WithAuthProps> = () => {
             </div>
             <TextField
               value={url}
-              onChange={(e) => setURL(e)}
-              placeholder="www.example.com"
+              onChange={(value) => setURL(value)}
               onKeyDown={handleUrlKeyDown}
               isDisabled={bookmark.isPending}
-            />
+            >
+              <Input placeholder="www.example.com" />
+            </TextField>
             <Button
               onClick={handleCreateBookmark}
               isDisabled={!url.trim() || bookmark.isPending}
@@ -214,11 +218,12 @@ const HomePage: React.FC<WithAuthProps> = () => {
             </div>
             <TextField
               value={query}
-              onChange={(e) => setQuery(e)}
-              placeholder="The best UI Library"
+              onChange={(value) => setQuery(value)}
               onKeyDown={handleQueryKeyDown}
               isDisabled={search.isLoading}
-            />
+            >
+              <Input placeholder="The best UI Library" />
+            </TextField>
             <Button
               onClick={handleSearchBookMark}
               isDisabled={search.isLoading || !query.trim()}
@@ -278,7 +283,7 @@ const HomePage: React.FC<WithAuthProps> = () => {
                   (!message.parts.length ||
                     (message.parts.length === 1 &&
                       message.parts[0].type === "text" &&
-                      !message.parts[0].content));
+                      !message.parts[0].text));
 
                 return (
                   <div
@@ -310,7 +315,7 @@ const HomePage: React.FC<WithAuthProps> = () => {
                         if (part.type === "text") {
                           return (
                             <div key={idx} className="prose dark:prose-invert prose-sm max-w-none">
-                              <Markdown shikiTheme={themes}>{part.content}</Markdown>
+                              <Markdown shikiTheme={themes}>{part.text}</Markdown>
                             </div>
                           );
                         }
@@ -363,11 +368,11 @@ const HomePage: React.FC<WithAuthProps> = () => {
                 <div className="flex-1">
                   <TextField
                     value={chatInput}
-                    onChange={(v) => setChatInput(v)}
-                    placeholder="Ask a question..."
+                    onChange={(value) => setChatInput(value)}
                     isDisabled={isLoading}
-                    className="w-full shadow-sm"
-                  />
+                  >
+                    <Input placeholder="Ask a question..." className="w-full shadow-sm" />
+                  </TextField>
                 </div>
                 <Button type="submit" isDisabled={isLoading || !chatInput.trim()} className="shadow-sm">
                   {isLoading ? (

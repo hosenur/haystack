@@ -7,33 +7,37 @@ import { useForm } from "@tanstack/react-form";
 import { z } from "zod";
 import { Input } from "@/components/ui/input";
 
-const loginSchema = z.object({
+const registerSchema = z.object({
+  name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email address"),
-  password: z.string().min(1, "Password is required"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const form = useForm({
     defaultValues: {
+      name: "",
       email: "",
       password: "",
     },
     validators: {
-      onDynamic: loginSchema,
+      onDynamic: registerSchema,
     },
     onSubmit: async ({ value }) => {
-      const { error } = await authClient.signIn.email({
+      const { error } = await authClient.signUp.email({
+        name: value.name,
         email: value.email,
         password: value.password,
       });
 
       if (error) {
+        form.setFieldValue("name", value.name);
         form.setFieldValue("email", value.email);
         form.setFieldValue("password", value.password);
         return { error: error.message };
       }
 
-      window.location.href = "/";
+      window.location.href = "/auth/login";
       return {};
     },
   });
@@ -48,16 +52,23 @@ export default function LoginPage() {
         }}
         className="w-full max-w-md space-y-4"
       >
-        <h1 className="text-2xl font-bold">Sign In</h1>
-        <p className="text-sm text-center text-gray-600">
-          Dont have an account?{" "}
-          <Link href="/auth/register" className="text-blue-600 hover:underline">
-            Register
-          </Link>
-        </p>
+        <h1 className="text-2xl font-bold">Register</h1>
+        <form.Field name="name">
+          {(field) => (
+            <TextField
+              value={field.state.value}
+              onChange={(value) => field.handleChange(value)}
+              onBlur={field.handleBlur}
+            >
+              <Label>Name</Label>
+              <Input />
+            </TextField>
+          )}
+        </form.Field>
         <form.Field name="email">
           {(field) => (
             <TextField
+              type="email"
               value={field.state.value}
               onChange={(value) => field.handleChange(value)}
               onBlur={field.handleBlur}
@@ -80,15 +91,19 @@ export default function LoginPage() {
             </TextField>
           )}
         </form.Field>
-        <form.Subscribe
-          selector={(state) => [state.canSubmit, state.isSubmitting]}
-        >
+        <form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
           {([canSubmit, isSubmitting]) => (
             <Button type="submit" isDisabled={!canSubmit} className="w-full">
-              {isSubmitting ? "Signing in..." : "Sign In"}
+              {isSubmitting ? "Creating account..." : "Register"}
             </Button>
           )}
         </form.Subscribe>
+        <p className="text-sm text-center text-gray-600">
+          Already have an account?{" "}
+          <Link href="/auth/login" className="text-blue-600 hover:underline">
+            Sign in
+          </Link>
+        </p>
       </form>
     </div>
   );

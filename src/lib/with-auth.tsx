@@ -1,18 +1,26 @@
 import { GetServerSideProps, GetServerSidePropsContext } from "next";
-import { getServerSession, parseCookies } from "./auth-utils";
+import { getServerSession } from "./auth-utils";
 
-/**
- * Higher-order function to create protected pages
- * Redirects to login if user is not authenticated
- */
+type SerializedUser = {
+  id: string;
+  name: string;
+  email: string;
+  emailVerified: boolean;
+  image: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+function serializeUser(user: Record<string, unknown>): SerializedUser {
+  return JSON.parse(JSON.stringify(user));
+}
+
 export function withAuth<P extends Record<string, unknown> = Record<string, unknown>>(
   getServerSidePropsFunc?: GetServerSideProps<P>
 ): GetServerSideProps<P> {
   return async (context: GetServerSidePropsContext) => {
-    const cookies = parseCookies(context.req.headers.cookie);
-    const session = await getServerSession(cookies);
+    const session = await getServerSession(context.req);
 
-    // If no session, redirect to login
     if (!session) {
       return {
         redirect: {
@@ -22,54 +30,38 @@ export function withAuth<P extends Record<string, unknown> = Record<string, unkn
       };
     }
 
-    // If tokens were refreshed, update cookies
-    if (session.tokens) {
-      const { createAuthCookies } = await import("./auth-utils");
-      context.res.setHeader(
-        "Set-Cookie",
-        createAuthCookies(session.tokens.access, session.tokens.refresh)
-      );
-    }
+    const user = serializeUser(session.user as Record<string, unknown>);
 
-    // If there's a custom getServerSideProps, call it with the session
     if (getServerSidePropsFunc) {
       const result = await getServerSidePropsFunc(context);
-      
-      // Merge session into props
+
       if ("props" in result) {
         return {
           ...result,
           props: {
             ...(await Promise.resolve(result.props)),
-            user: session.user,
+            user,
           },
         };
       }
-      
+
       return result;
     }
 
-    // Default: just return the user
     return {
       props: {
-        user: session.user,
+        user,
       } as unknown as P,
     };
   };
 }
 
-/**
- * Higher-order function to create guest-only pages (login, register)
- * Redirects to home if user is already authenticated
- */
 export function withGuest<P extends Record<string, unknown> = Record<string, unknown>>(
   getServerSidePropsFunc?: GetServerSideProps<P>
 ): GetServerSideProps<P> {
   return async (context: GetServerSidePropsContext) => {
-    const cookies = parseCookies(context.req.headers.cookie);
-    const session = await getServerSession(cookies);
+    const session = await getServerSession(context.req);
 
-    // If session exists, redirect to home
     if (session) {
       return {
         redirect: {
@@ -79,23 +71,16 @@ export function withGuest<P extends Record<string, unknown> = Record<string, unk
       };
     }
 
-    // If there's a custom getServerSideProps, call it
     if (getServerSidePropsFunc) {
       return await getServerSidePropsFunc(context);
     }
 
-    // Default: return empty props
     return {
       props: {} as P,
     };
   };
 }
 
-/**
- * Type for user prop that gets passed to protected pages
- */
 export interface WithAuthProps {
-  user: {
-    id: string;
-  };
+  user: SerializedUser;
 }
