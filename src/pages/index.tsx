@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/text-field";
 import { Input } from "@/components/ui/input";
 import AppLayout from "@/layouts/app-layout";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import useSWR, { mutate } from "swr";
 
 import { cn } from "@/lib/utils";
 import { withAuth, WithAuthProps } from "@/lib/with-auth";
@@ -31,7 +31,6 @@ const themes = ['github-light', 'github-dark'] as [BundledTheme, BundledTheme];
 
 const TOOL_DISPLAY_NAMES: Record<string, string> = {
   searchBookmarks: "Search Bookmarks",
-  webSearch: "Web Search",
   createBookmark: "Create Bookmark",
 };
 
@@ -59,20 +58,13 @@ const createBookmark = async (data: { url: string }) => {
   return res.json();
 };
 
-const searchBookmarks = async (query: string) => {
-  const res = await fetch(`/api/bookmark/search?query=${encodeURIComponent(query)}`);
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.error || "Failed to search bookmarks");
-  }
-  return res.json();
-};
+const fetcher = (url: string) => fetch(url).then(res => res.json());
 
 const HomePage: React.FC<WithAuthProps> = () => {
   const [url, setURL] = React.useState<string>("");
   const [query, setQuery] = React.useState<string>("");
-  const [searchTrigger, setSearchTrigger] = React.useState<string>(""); // Add search trigger state
   const router = useRouter();
+  const { data: countData } = useSWR<{ count: number }>("/api/bookmark/count", fetcher);
 
   const { messages, sendMessage, status } = useChat({
     transport: new DefaultChatTransport({ api: "/api/chat" }),
@@ -96,35 +88,38 @@ const HomePage: React.FC<WithAuthProps> = () => {
     setChatInput("");
   };
 
-  const bookmark = useMutation({
-    mutationFn: createBookmark,
-    onSuccess: () => {
-      toast.success("Bookmark created successfully!");
-      setURL(""); // Clear the input after successful creation
-    },
-    onError: (error) => {
-      toast.error(`Failed to create bookmark: ${error.message}`);
-    },
-  });
-
-  // Fix: Use searchTrigger instead of query for enabled condition
-  const search = useQuery(
-    {
-      queryKey: ["search", searchTrigger],
-      queryFn: () => searchBookmarks(searchTrigger),
-      enabled: Boolean(searchTrigger.trim()), // Enable when searchTrigger has value
-    }
+  const [isCreatingBookmark, setIsCreatingBookmark] = React.useState(false);
+  const [searchKey, setSearchKey] = React.useState<string | null>(null);
+  const { data: searchData, isLoading: isSearching } = useSWR(
+    searchKey ? `/api/bookmark/search?query=${encodeURIComponent(searchKey)}` : null,
+    fetcher
   );
+
+  const handleCreateBookmarkSubmit = async (trimmedUrl: string) => {
+    setIsCreatingBookmark(true);
+    try {
+      await createBookmark({ url: trimmedUrl });
+      toast.success("Bookmark created successfully!");
+      setURL("");
+      mutate("/api/bookmark/count");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to create bookmark";
+      if (message === "Bookmark already exists") {
+        toast.error("This bookmark already exists!");
+      } else {
+        toast.error(`Failed to create bookmark: ${message}`);
+      }
+    } finally {
+      setIsCreatingBookmark(false);
+    }
+  };
 
   const handleSearchBookMark = () => {
     if (!query.trim()) {
       toast.warning("Please enter a search query");
       return;
     }
-
-    // Set the search trigger to initiate the search
-    setSearchTrigger(query.trim());
-    // Don't clear the query immediately - let user see what they searched for
+    setSearchKey(query.trim());
   };
 
   const handleCreateBookmark = () => {
@@ -142,7 +137,7 @@ const HomePage: React.FC<WithAuthProps> = () => {
       toast.error("Please enter a valid URL");
       return;
     }
-    bookmark.mutate({ url: trimmedUrl });
+    handleCreateBookmarkSubmit(trimmedUrl);
   };
 
   const handleLogout = async () => {
@@ -198,13 +193,13 @@ const HomePage: React.FC<WithAuthProps> = () => {
               value={url}
               onChange={(value) => setURL(value)}
               onKeyDown={handleUrlKeyDown}
-              isDisabled={bookmark.isPending}
+              isDisabled={isCreatingBookmark}
             >
               <Input placeholder="www.example.com" />
             </TextField>
             <Button
               onClick={handleCreateBookmark}
-              isDisabled={!url.trim() || bookmark.isPending}
+              isDisabled={!url.trim() || isCreatingBookmark}
             >
               Create Bookmark
             </Button>
@@ -220,13 +215,13 @@ const HomePage: React.FC<WithAuthProps> = () => {
               value={query}
               onChange={(value) => setQuery(value)}
               onKeyDown={handleQueryKeyDown}
-              isDisabled={search.isLoading}
+              isDisabled={isSearching}
             >
               <Input placeholder="The best UI Library" />
             </TextField>
             <Button
               onClick={handleSearchBookMark}
-              isDisabled={search.isLoading || !query.trim()}
+              isDisabled={isSearching || !query.trim()}
             >
               Search Bookmarks
             </Button>
@@ -244,7 +239,7 @@ const HomePage: React.FC<WithAuthProps> = () => {
               )}
             </div>
             <div className="flex-1 overflow-y-auto divide-y divide-dashed">
-              {(search?.data?.hits as SearchHit[])?.map((hit) => (
+              {(searchData?.hits as SearchHit[])?.map((hit) => (
                 <div key={hit._id} className="p-4 group flex items-center justify-between shrink-0">
                   <Link
                     target="_blank"
@@ -268,11 +263,12 @@ const HomePage: React.FC<WithAuthProps> = () => {
           <div className="flex flex-col h-full overflow-hidden">
             <ReactLenis root={false} className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
               {messages.length === 0 && (
-                <div className="flex flex-col items-center justify-center h-full text-muted-fg space-y-2">
+                <div className="flex flex-col items-center justify-center h-full text-muted-fg space-y-3">
                   <div className="p-3 bg-neutral-100 dark:bg-neutral-800 rounded-full">
                     <RiSearch2Line size={24} />
                   </div>
                   <p className="text-sm">Ask me anything about your bookmarks...</p>
+                  <p className="text-xs text-muted-fg/60">{countData?.count ?? 0} bookmarks in the system</p>
                 </div>
               )}
               {messages.map((message) => {

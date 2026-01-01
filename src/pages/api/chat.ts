@@ -3,7 +3,6 @@ import { streamText, tool, convertToModelMessages, stepCountIs } from "ai";
 import { groq } from "@ai-sdk/groq";
 import { z } from "zod";
 import { pc } from "@/lib/pinecone";
-import { firecrawl } from "@/lib/firecrawl";
 import { tasks } from "@trigger.dev/sdk/v3";
 import { bookmark } from "../../trigger/bookmark";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -39,28 +38,6 @@ const searchBookmarks = tool({
         } catch (error) {
             console.error("Pinecone search error:", error);
             return { error: "Failed to search bookmarks" };
-        }
-    },
-});
-
-const webSearch = tool({
-    description: "Fetch and read the content of a specific URL",
-    inputSchema: z.object({
-        url: z.string().describe("The URL to fetch content from"),
-    }),
-    execute: async ({ url }: { url: string }) => {
-        console.log(`Invoked webSearch with url: ${url}`);
-        try {
-            const doc = await firecrawl.scrape(url, {
-                formats: ["markdown"],
-            });
-            return {
-                title: doc.metadata?.title || "Untitled",
-                content: doc.markdown || "No content found",
-            };
-        } catch (error) {
-            console.error("Firecrawl scrape error:", error);
-            return { error: "Failed to fetch URL content" };
         }
     },
 });
@@ -104,7 +81,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             system: "You are a helpful assistant. You must always try to search the user's bookmarks first using the `searchBookmarks` tool to find relevant information. Only if you cannot find the answer in the bookmarks should you generate an answer from your own knowledge.",
             tools: {
                 searchBookmarks,
-                webSearch,
                 createBookmark
             },
             stopWhen: stepCountIs(5),
